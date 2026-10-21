@@ -1,0 +1,6 @@
+{
+  "name": "DualSync BT",
+  "description": "Two Devices. One Audio Experience. Dual Bluetooth audio device management, local music playback, individual volume controls, and latency calibration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
