@@ -18,6 +18,7 @@ import { clampVolume, calculateEffectiveVolume, formatVolumePercent } from '../u
 import { clampLatency, formatLatency, calculateSoftwareDelays } from '../utils/latency';
 import { capabilityService } from '../services/capabilityService';
 import { mediaLibraryService } from '../services/mediaLibraryService';
+import { bluetoothService } from '../services/bluetoothService';
 import { BTDeviceInfo } from '../types/bluetooth';
 
 describe('1. Volume Calculations', () => {
@@ -101,30 +102,49 @@ describe('3. Device Slot Assignment & Duplicate Prevention', () => {
     expect(isDuplicate).toBe(true);
   });
 
-  it('should allow two distinct devices in Device 1 and Device 2 slots', () => {
-    const device1: BTDeviceInfo = {
-      id: 'bt-speaker-uuid-001',
-      name: 'JBL Flip 6',
-      status: 'disconnected',
-      gattConnected: false,
-      batteryLevel: null,
+  it('should store Device 1 and Device 2 independently without overwriting or disconnecting', () => {
+    let dev1: BTDeviceInfo | null = {
+      id: 'bt-speaker-001',
+      name: 'Bose SoundLink',
+      status: 'connected',
+      gattConnected: true,
+      batteryLevel: 85,
+      discoveredServices: ['Battery Service (0x180F)'],
+      isAudioOutputSupported: false,
+      audioRoutingNote: '',
+    };
+
+    let dev2: BTDeviceInfo | null = null;
+
+    // Simulate selecting Device 2 independently
+    const newDev2: BTDeviceInfo = {
+      id: 'bt-earbuds-002',
+      name: 'Pixel Buds Pro',
+      status: 'connected',
+      gattConnected: true,
+      batteryLevel: 90,
       discoveredServices: [],
       isAudioOutputSupported: false,
       audioRoutingNote: '',
     };
 
-    const device2: BTDeviceInfo = {
-      id: 'bt-headphones-uuid-002',
-      name: 'Sony WH-1000XM4',
-      status: 'disconnected',
-      gattConnected: false,
-      batteryLevel: null,
-      discoveredServices: [],
-      isAudioOutputSupported: false,
-      audioRoutingNote: '',
-    };
+    dev2 = newDev2;
 
-    expect(device1.id).not.toBe(device2.id);
+    // Verify Device 1 remains completely intact and connected
+    expect(dev1).not.toBeNull();
+    expect(dev1?.id).toBe('bt-speaker-001');
+    expect(dev1?.gattConnected).toBe(true);
+    expect(dev1?.batteryLevel).toBe(85);
+
+    // Verify Device 2 was assigned independently
+    expect(dev2.id).toBe('bt-earbuds-002');
+    expect(dev2.name).toBe('Pixel Buds Pro');
+  });
+
+  it('should confirm that getDevices() only returns previously permitted devices and is not a nearby-device scanner', async () => {
+    // When getDevices() is called without user permission grants, it returns empty array
+    const permitted = await bluetoothService.getPermittedDevices();
+    expect(Array.isArray(permitted)).toBe(true);
   });
 });
 

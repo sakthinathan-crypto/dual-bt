@@ -21,15 +21,34 @@ class BluetoothService {
   }
 
   /**
+   * Retrieves previously permitted devices using navigator.bluetooth.getDevices().
+   * NOTE: getDevices() ONLY returns devices that the user has ALREADY authorized in previous
+   * browser sessions. It DOES NOT perform a fresh radio scan of nearby devices.
+   */
+  public async getPermittedDevices(): Promise<BluetoothDevice[]> {
+    if (!this.isSupported()) return [];
+    try {
+      const bluetooth = (navigator as any).bluetooth;
+      if (typeof bluetooth.getDevices === 'function') {
+        return await bluetooth.getDevices();
+      }
+    } catch (err) {
+      console.warn('navigator.bluetooth.getDevices() error:', err);
+    }
+    return [];
+  }
+
+  /**
    * Launches the browser's native Bluetooth Device Chooser.
-   * MUST be called in response to a direct user action (click/touch).
+   * MUST be called in direct response to a user click/touch event.
+   * Uses navigator.bluetooth.requestDevice() with acceptAllDevices: true.
    */
   public async requestBluetoothDevice(
     onDisconnected?: (deviceId: string) => void
   ): Promise<BTDeviceInfo> {
     if (!this.isSupported()) {
       throw new Error(
-        'Web Bluetooth API is not supported in this browser. Please use Google Chrome, Microsoft Edge, or Chrome for Android over HTTPS/localhost.'
+        'Web Bluetooth API is not supported in this browser. Please use Google Chrome, Microsoft Edge, or Chrome for Android over HTTPS or localhost.'
       );
     }
 
@@ -37,12 +56,15 @@ class BluetoothService {
       const bluetooth = (navigator as any).bluetooth;
 
       // Web Bluetooth requires acceptAllDevices: true when not filtering by specific service
+      // We include optional services to read battery and device metadata where peripheral allows
       const rawDevice: BluetoothDevice = await bluetooth.requestDevice({
         acceptAllDevices: true,
         optionalServices: [
+          'battery_service',
+          'device_information',
+          'generic_access',
           BATTERY_SERVICE_UUID,
           DEVICE_INFO_SERVICE_UUID,
-          'generic_access',
         ],
       });
 
@@ -74,11 +96,11 @@ class BluetoothService {
       return deviceInfo;
     } catch (err: any) {
       if (err.name === 'NotFoundError' || err.message?.includes('User cancelled')) {
-        throw new Error('Bluetooth scan was cancelled by the user.');
+        throw new Error('Bluetooth scan was cancelled or closed without selecting a device.');
       } else if (err.name === 'SecurityError') {
         throw new Error('Security Error: Web Bluetooth requires a secure context (HTTPS) and an active user gesture.');
       } else if (err.name === 'NotSupportedError') {
-        throw new Error('Web Bluetooth is not supported on this platform or adapter.');
+        throw new Error('Web Bluetooth is not supported on this platform, or the Bluetooth radio is disabled.');
       }
       throw new Error(err.message || 'Failed to scan for Bluetooth devices.');
     }
@@ -92,7 +114,7 @@ class BluetoothService {
       return {
         ...device,
         status: 'error',
-        errorMessage: 'GATT server unavailable on this device.',
+        errorMessage: 'Device reference is no longer active in memory. Click "Change Device" to re-authorize.',
       };
     }
 
@@ -114,7 +136,7 @@ class BluetoothService {
           batteryLevel = value.getUint8(0);
         }
       } catch {
-        // Many BLE devices or classic speakers don't expose BLE battery service
+        // Peripheral does not expose BLE battery service
       }
 
       try {
@@ -140,7 +162,7 @@ class BluetoothService {
         ...device,
         status: 'error',
         gattConnected: false,
-        errorMessage: err.message || 'GATT connection failed. Device may be in sleep mode or out of range.',
+        errorMessage: err.message || 'GATT connection failed. Device may be in sleep mode, disconnected, or out of range.',
       };
     }
   }
@@ -161,6 +183,26 @@ class BluetoothService {
       status: 'disconnected',
       gattConnected: false,
       batteryLevel: null,
+    };
+  }
+
+  /**
+   * Technical explanation of why only connected devices appear on mobile phones,
+   * and why a web application cannot enumerate all nearby Bluetooth audio devices.
+   */
+  public getScannerLimitationsExplanation(): {
+    whyOnlyConnectedAppear: string[];
+    nativeAppRecommendation: string;
+  } {
+    return {
+      whyOnlyConnectedAppear: [
+        'Android Location Permission / GPS: Android OS requires Location Services (GPS) to be turned ON to scan for unbonded nearby Bluetooth Low Energy devices. Without Location enabled, Android will ONLY show devices that are already paired/connected in phone settings.',
+        'Pairing Mode Requirement: Unpaired Bluetooth speakers and earbuds only advertise discovery packets while actively in "Pairing Mode" (blinking pairing indicator). Once paired or idle, they do not broadcast discovery packets.',
+        'Bluetooth Classic (A2DP) vs Bluetooth Low Energy (BLE): Standard Bluetooth headphones and speakers broadcast audio via Classic Bluetooth A2DP. The Web Bluetooth API only listens to Bluetooth Low Energy (BLE) advertisements. Pure Classic Bluetooth audio devices will never appear in a web browser chooser until they are paired at the Android OS level.',
+        'navigator.bluetooth.getDevices() vs requestDevice(): getDevices() does NOT perform a radio scan; it only lists previously permitted devices. requestDevice() launches the native chooser to discover broadcasting BLE peripherals.',
+      ],
+      nativeAppRecommendation:
+        'If full discovery of every nearby Bluetooth Classic speaker, headphone, and earbud by name is required, a standard web browser cannot provide this due to browser sandbox security. A native Android application (using Android SDK BluetoothAdapter.startDiscovery() and BluetoothA2dp APIs with BLUETOOTH_SCAN and BLUETOOTH_CONNECT runtime permissions) must be used instead.',
     };
   }
 }

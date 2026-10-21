@@ -210,6 +210,41 @@ export const Devices: React.FC<DevicesProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Bluetooth Discovery Limitations & Native App Recommendation */}
+      <div className="bg-[#141B2D] border border-slate-800 rounded-xl p-6 shadow-lg space-y-4">
+        <div className="flex items-center gap-2 text-white font-semibold text-base">
+          <Smartphone className="w-5 h-5 text-[#6C63FF]" />
+          <span>Mobile Device Discovery &amp; Web Platform Boundaries</span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-300 leading-relaxed">
+          <div className="p-4 bg-[#080D1B] rounded-xl border border-slate-800 space-y-2">
+            <h4 className="font-semibold text-slate-200">Why Only Connected Devices Appear in Chooser</h4>
+            <ul className="space-y-1.5 text-[11px] text-slate-400 list-disc list-inside">
+              <li>
+                <strong className="text-slate-300">Android Location Requirement:</strong> Android requires Location Services (GPS) to be turned ON for Chrome to detect unbonded Bluetooth Low Energy devices. If Location is disabled, Android blocks unbonded beacons for privacy, showing only previously paired devices.
+              </li>
+              <li>
+                <strong className="text-slate-300">Active Pairing Mode:</strong> Unpaired speakers must have their pairing button held down (flashing LED) to broadcast BLE discovery packets.
+              </li>
+              <li>
+                <strong className="text-slate-300">getDevices() vs requestDevice():</strong> <code>navigator.bluetooth.getDevices()</code> only returns previously permitted devices and does not scan the radio. DualSync BT correctly uses <code>requestDevice()</code> on user click.
+              </li>
+            </ul>
+          </div>
+
+          <div className="p-4 bg-[#080D1B] rounded-xl border border-slate-800 space-y-2">
+            <h4 className="font-semibold text-slate-200">Native Android App Recommendation</h4>
+            <p className="text-[11px] text-slate-400">
+              Web browsers operate inside strict security sandboxes and only support Bluetooth Low Energy (BLE) GATT peripherals. They cannot arbitrarily scan or stream to Bluetooth Classic A2DP audio devices.
+            </p>
+            <p className="text-[11px] text-slate-400">
+              If your application strictly requires discovering every nearby Bluetooth speaker, soundbar, and earbud automatically by name with real-time RSSI signal bars, a <strong className="text-[#00D4FF]">native Android application</strong> using Android SDK <code>BluetoothAdapter.startDiscovery()</code> and <code>BluetoothA2dp</code> APIs is required.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

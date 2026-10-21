@@ -5,7 +5,7 @@
  */
 
 import React, { useState } from 'react';
-import { X, Bluetooth, ShieldAlert, CheckCircle2, AlertCircle, Headphones, Volume2, ArrowRight } from 'lucide-react';
+import { X, Bluetooth, ShieldAlert, CheckCircle2, AlertCircle, Headphones, ArrowRight, HelpCircle, Smartphone, ChevronDown, ChevronUp } from 'lucide-react';
 import { DeviceSlot } from '../types/bluetooth';
 import { capabilityService } from '../services/capabilityService';
 
@@ -27,10 +27,12 @@ export const DeviceSelectorModal: React.FC<DeviceSelectorModalProps> = ({
   errorMessage,
 }) => {
   const [scanResult, setScanResult] = useState<{ success: boolean; message?: string } | null>(null);
+  const [showMobileTips, setShowMobileTips] = useState(false);
 
   if (!isOpen) return null;
 
   const slotTitle = slot === 'device1' ? 'Device 1' : 'Device 2';
+  const otherSlotTitle = slot === 'device1' ? 'Device 2' : 'Device 1';
   const caps = capabilityService.detectCapabilities();
 
   const handleStartScan = async () => {
@@ -45,8 +47,8 @@ export const DeviceSelectorModal: React.FC<DeviceSelectorModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="bg-[#141B2D] border border-slate-700/80 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative space-y-5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="bg-[#141B2D] border border-slate-700/80 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -64,7 +66,7 @@ export const DeviceSelectorModal: React.FC<DeviceSelectorModalProps> = ({
           </div>
           <h2 className="text-xl font-bold text-white">Select Bluetooth {slotTitle}</h2>
           <p className="text-sm text-slate-300">
-            Search for nearby Bluetooth devices.
+            Search for nearby Bluetooth devices. Independent from {otherSlotTitle}.
           </p>
         </div>
 
@@ -81,17 +83,45 @@ export const DeviceSelectorModal: React.FC<DeviceSelectorModalProps> = ({
           </div>
         )}
 
-        {/* Information on Browser API vs Bluetooth Audio */}
-        <div className="p-4 bg-[#080D1B] border border-slate-800 rounded-xl space-y-2 text-xs text-slate-300">
-          <div className="flex items-center gap-2 font-medium text-slate-200">
-            <Headphones className="w-4 h-4 text-[#00D4FF]" />
-            <span>Important Audio Device Notice</span>
+        {/* Why only connected devices appear on mobile - Help banner */}
+        <div className="p-3.5 bg-[#080D1B] border border-slate-800 rounded-xl space-y-2 text-xs">
+          <button
+            onClick={() => setShowMobileTips(!showMobileTips)}
+            className="w-full flex items-center justify-between text-left text-slate-200 hover:text-white font-medium cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <Smartphone className="w-4 h-4 text-[#00D4FF]" />
+              <span>Only connected devices showing on your phone?</span>
+            </div>
+            {showMobileTips ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          </button>
+
+          {showMobileTips && (
+            <div className="space-y-2 pt-2 border-t border-slate-800 text-slate-300 text-[11px] leading-relaxed">
+              <p>
+                <strong>1. Turn ON Phone Location (GPS):</strong> On Android, Google Chrome requires Location Services to be enabled to discover unbonded nearby Bluetooth Low Energy devices. If Location is off, Android only lists devices already connected in phone settings.
+              </p>
+              <p>
+                <strong>2. Put Device in Pairing Mode:</strong> Unpaired Bluetooth speakers only broadcast discovery signals when actively in pairing mode (LED blinking).
+              </p>
+              <p>
+                <strong>3. Classic Audio (A2DP) vs BLE:</strong> Web Bluetooth only scans Bluetooth Low Energy (BLE) peripherals. Pure Bluetooth Classic speakers must be paired first in your phone&apos;s OS Bluetooth settings.
+              </p>
+              <p className="text-amber-300/90 font-medium">
+                * Note on <code>getDevices()</code>: The browser API <code>getDevices()</code> only returns previously authorized devices and does not scan the radio. Clicking &quot;Scan for Devices&quot; invokes <code>requestDevice()</code> to start a fresh scan.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Native Android App Recommendation */}
+        <div className="p-3.5 bg-[#080D1B] border border-slate-800 rounded-xl space-y-1.5 text-xs text-slate-400">
+          <div className="flex items-center gap-2 text-slate-300 font-semibold">
+            <Headphones className="w-4 h-4 text-[#6C63FF]" />
+            <span>Browser Sandbox vs Native Android</span>
           </div>
-          <p className="text-slate-400 leading-relaxed">
-            Bluetooth speakers and headphones use Bluetooth Classic (A2DP) for high-fidelity audio streams. The Web Bluetooth API primarily connects to Bluetooth Low Energy (BLE) GATT peripherals.
-          </p>
-          <p className="text-slate-400 leading-relaxed">
-            Selecting your device here registers it for latency calibration and software gain management. To ensure sound actually plays through your speakers, make sure the device is paired in your operating system's Bluetooth menu.
+          <p className="text-[11px] leading-relaxed">
+            Browsers cannot enumerate arbitrary nearby Classic Bluetooth speakers without user approval due to sandbox security. If you need automatic scanning of all nearby Classic audio devices by name, a native Android application using <code>BluetoothAdapter.startDiscovery()</code> is required.
           </p>
         </div>
 
@@ -105,12 +135,12 @@ export const DeviceSelectorModal: React.FC<DeviceSelectorModalProps> = ({
             {isScanning ? (
               <>
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>Waiting for Browser Device Chooser...</span>
+                <span>Opening Browser Device Chooser...</span>
               </>
             ) : (
               <>
                 <Bluetooth className="w-4 h-4" />
-                <span>Scan for Devices</span>
+                <span>Scan for Devices ({slotTitle})</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
@@ -120,7 +150,14 @@ export const DeviceSelectorModal: React.FC<DeviceSelectorModalProps> = ({
           {errorMessage && (
             <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-2.5 text-xs text-red-300">
               <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-              <span>{errorMessage}</span>
+              <div className="space-y-1">
+                <p className="font-semibold">{errorMessage}</p>
+                {errorMessage.includes('cancelled') && (
+                  <p className="text-[11px] text-slate-400">
+                    If no devices appeared in the chooser, ensure the device is in pairing mode and Location Services (GPS) are turned ON on your phone.
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
@@ -135,7 +172,7 @@ export const DeviceSelectorModal: React.FC<DeviceSelectorModalProps> = ({
         {/* Footer info */}
         <div className="text-center pt-1 border-t border-slate-800">
           <p className="text-[11px] text-slate-500">
-            Browser security requires an explicit user gesture to open the Bluetooth device prompt. Background auto-scanning is not permitted.
+            Selecting a device for {slotTitle} will not disconnect or overwrite {otherSlotTitle}. Both device slots maintain independent connection states.
           </p>
         </div>
       </div>

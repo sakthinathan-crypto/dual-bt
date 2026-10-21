@@ -60,6 +60,7 @@ export interface NavigatorBluetooth {
   bluetooth?: {
     getAvailability?: () => Promise<boolean>;
     requestDevice: (options: RequestDeviceOptions) => Promise<BluetoothDevice>;
+    getDevices?: () => Promise<BluetoothDevice[]>;
   };
 }
 

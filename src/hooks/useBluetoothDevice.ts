@@ -1,5 +1,7 @@
 /**
- * Custom hook for managing dual Bluetooth devices in DualSync BT
+ * Custom hook for managing dual Bluetooth devices in DualSync BT.
+ * Stores Device 1 and Device 2 references completely independently.
+ * Selecting Device 2 does not overwrite or disconnect Device 1.
  */
 
 import { useState, useCallback, useEffect } from 'react';
@@ -16,7 +18,7 @@ export function useBluetoothDevice() {
   const [isScanning, setIsScanning] = useState<'device1' | 'device2' | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Restore saved device metadata (without claiming fake active GATT)
+  // Restore saved device metadata on mount (without pretending active GATT persists across reloads)
   useEffect(() => {
     try {
       const d1Json = localStorage.getItem(STORAGE_KEY_BT_D1);
@@ -34,13 +36,15 @@ export function useBluetoothDevice() {
     }
   }, []);
 
+  // Listen for GATT disconnection events on specific device ID
   const handleDeviceDisconnected = useCallback((deviceId: string) => {
     setDevice1((prev) => (prev?.id === deviceId ? { ...prev, gattConnected: false, status: 'disconnected', batteryLevel: null } : prev));
     setDevice2((prev) => (prev?.id === deviceId ? { ...prev, gattConnected: false, status: 'disconnected', batteryLevel: null } : prev));
   }, []);
 
   /**
-   * Request Bluetooth device for a slot (Device 1 or Device 2)
+   * Request Bluetooth device for a slot ('device1' or 'device2').
+   * Selecting Device 2 preserves Device 1 and its connection state.
    */
   const scanAndAssignDevice = useCallback(
     async (slot: 'device1' | 'device2'): Promise<{ success: boolean; message?: string }> => {
@@ -50,9 +54,9 @@ export function useBluetoothDevice() {
       try {
         const discovered = await bluetoothService.requestBluetoothDevice(handleDeviceDisconnected);
 
-        // Check for duplicate assignment
+        // Check for duplicate device assignment by unique device ID
         const otherDevice = slot === 'device1' ? device2 : device1;
-        if (otherDevice && (otherDevice.id === discovered.id || (otherDevice.name && otherDevice.name === discovered.name && discovered.name !== 'Unnamed Bluetooth Device'))) {
+        if (otherDevice && otherDevice.id === discovered.id) {
           const duplicateMsg = slot === 'device2'
             ? 'This device is already assigned to Device 1.'
             : 'This device is already assigned to Device 2.';
@@ -61,7 +65,7 @@ export function useBluetoothDevice() {
           return { success: false, message: duplicateMsg };
         }
 
-        // Check if there's a saved profile for latency
+        // Check if there is a saved profile for latency
         const savedProfile = synchronizationService.getDeviceProfile(discovered.id);
         if (savedProfile) {
           if (slot === 'device1') {
@@ -83,7 +87,7 @@ export function useBluetoothDevice() {
         return { success: true };
       } catch (err: any) {
         setIsScanning(null);
-        setErrorMessage(err.message || 'Scan error occurred');
+        setErrorMessage(err.message || 'Scan error occurred.');
         return { success: false, message: err.message };
       }
     },
@@ -93,6 +97,14 @@ export function useBluetoothDevice() {
   const connectDeviceGATT = useCallback(async (slot: 'device1' | 'device2') => {
     const target = slot === 'device1' ? device1 : device2;
     if (!target) return;
+
+    if (!target.rawDevice) {
+      const err = 'Device reference expired after page reload. Please click "Change Device" to re-authorize the browser connection.';
+      const updated = { ...target, status: 'error' as const, errorMessage: err };
+      if (slot === 'device1') setDevice1(updated);
+      else setDevice2(updated);
+      return;
+    }
 
     const updated = await bluetoothService.connectGATT(target);
     if (slot === 'device1') setDevice1(updated);
