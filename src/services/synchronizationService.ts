@@ -7,6 +7,7 @@ import { SyncConfig, SyncStatus, DeviceSyncProfile } from '../types/synchronizat
 import { BTDeviceInfo } from '../types/bluetooth';
 import { audioEngine } from './audioEngine';
 import { capabilityService } from './capabilityService';
+import { safeStorage } from '../utils/storage';
 
 const STORAGE_KEY_SYNC_CONFIG = 'dualsync_sync_config_v1';
 const STORAGE_KEY_DEVICE_PROFILES = 'dualsync_device_profiles_v1';
@@ -101,7 +102,7 @@ class SynchronizationService {
       savedAt: Date.now(),
     };
     try {
-      localStorage.setItem(STORAGE_KEY_DEVICE_PROFILES, JSON.stringify(this.deviceProfiles));
+      safeStorage.setItem(STORAGE_KEY_DEVICE_PROFILES, JSON.stringify(this.deviceProfiles));
     } catch {
       // ignore
     }
@@ -113,7 +114,7 @@ class SynchronizationService {
 
   private saveToStorage(): void {
     try {
-      localStorage.setItem(STORAGE_KEY_SYNC_CONFIG, JSON.stringify(this.config));
+      safeStorage.setItem(STORAGE_KEY_SYNC_CONFIG, JSON.stringify(this.config));
     } catch {
       // ignore
     }
@@ -121,11 +122,11 @@ class SynchronizationService {
 
   private loadFromStorage(): void {
     try {
-      const savedConfig = localStorage.getItem(STORAGE_KEY_SYNC_CONFIG);
+      const savedConfig = safeStorage.getItem(STORAGE_KEY_SYNC_CONFIG);
       if (savedConfig) {
         this.config = { ...this.config, ...JSON.parse(savedConfig) };
       }
-      const savedProfiles = localStorage.getItem(STORAGE_KEY_DEVICE_PROFILES);
+      const savedProfiles = safeStorage.getItem(STORAGE_KEY_DEVICE_PROFILES);
       if (savedProfiles) {
         this.deviceProfiles = JSON.parse(savedProfiles);
       }

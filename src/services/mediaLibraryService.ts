@@ -8,6 +8,7 @@
 import { AudioTrack } from '../types/audio';
 import { parseAudioFile } from '../utils/id3Parser';
 import { generateSyntheticDemoTrack } from '../utils/wavGenerator';
+import { safeStorage } from '../utils/storage';
 
 const STORAGE_KEY_TRACKS = 'dualsync_library_tracks_v1';
 const STORAGE_KEY_RECENT = 'dualsync_recently_played_v1';
@@ -202,15 +203,15 @@ class MediaLibraryService {
         dateAdded: t.dateAdded,
         isDemo: t.isDemo,
       }));
-      localStorage.setItem(STORAGE_KEY_TRACKS, JSON.stringify(toSave));
+      safeStorage.setItem(STORAGE_KEY_TRACKS, JSON.stringify(toSave));
     } catch {
-      // quota or localstorage disabled
+      // ignore
     }
   }
 
   private persistRecentlyPlayed(): void {
     try {
-      localStorage.setItem(STORAGE_KEY_RECENT, JSON.stringify(this.recentlyPlayedIds));
+      safeStorage.setItem(STORAGE_KEY_RECENT, JSON.stringify(this.recentlyPlayedIds));
     } catch {
       // ignore
     }
@@ -218,7 +219,7 @@ class MediaLibraryService {
 
   private loadPersistedMetadata(): void {
     try {
-      const savedRecent = localStorage.getItem(STORAGE_KEY_RECENT);
+      const savedRecent = safeStorage.getItem(STORAGE_KEY_RECENT);
       if (savedRecent) {
         this.recentlyPlayedIds = JSON.parse(savedRecent);
       }

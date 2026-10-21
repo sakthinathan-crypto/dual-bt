@@ -88,7 +88,16 @@ class AudioEngine {
 
       this.isInitialized = true;
     } catch (err) {
-      console.error('Failed to initialize AudioEngine:', err);
+      console.warn('AudioEngine Web Audio setup deferred or restricted:', err);
+      // Ensure basic HTML audio element exists even if Web Audio nodes failed
+      if (!this.audioElement && typeof Audio !== 'undefined') {
+        try {
+          this.audioElement = new Audio();
+        } catch {
+          // ignore
+        }
+      }
+      this.isInitialized = true;
     }
   }
 

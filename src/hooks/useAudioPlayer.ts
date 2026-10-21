@@ -7,6 +7,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { AudioTrack, RepeatMode } from '../types/audio';
 import { audioEngine } from '../services/audioEngine';
 import { mediaLibraryService } from '../services/mediaLibraryService';
+import { safeStorage } from '../utils/storage';
 
 const STORAGE_KEY_VOLUMES = 'dualsync_volumes_v1';
 
@@ -40,7 +41,7 @@ export function useAudioPlayer() {
   // Restore saved volume levels
   useEffect(() => {
     try {
-      const savedVol = localStorage.getItem(STORAGE_KEY_VOLUMES);
+      const savedVol = safeStorage.getItem(STORAGE_KEY_VOLUMES);
       if (savedVol) {
         const parsed = JSON.parse(savedVol);
         if (typeof parsed.master === 'number') {
@@ -64,7 +65,7 @@ export function useAudioPlayer() {
   // Save volume levels
   const persistVolumes = useCallback((m: number, d1: number, d2: number) => {
     try {
-      localStorage.setItem(STORAGE_KEY_VOLUMES, JSON.stringify({ master: m, d1, d2 }));
+      safeStorage.setItem(STORAGE_KEY_VOLUMES, JSON.stringify({ master: m, d1, d2 }));
     } catch {
       // ignore
     }

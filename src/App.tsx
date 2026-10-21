@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { Bluetooth } from 'lucide-react';
 import { Header, NavTab } from './components/Header';
 import { BottomPlayerBar } from './components/BottomPlayerBar';
 import { DeviceSelectorModal } from './components/DeviceSelectorModal';
@@ -22,10 +23,20 @@ import { useBluetoothDevice } from './hooks/useBluetoothDevice';
 import { useAudioPlayer } from './hooks/useAudioPlayer';
 import { useSynchronization } from './hooks/useSynchronization';
 import { mediaLibraryService } from './services/mediaLibraryService';
+import { safeStorage } from './utils/storage';
 
 export default function App() {
+  const [isInitialized, setIsInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState<NavTab>('home');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    // Non-blocking initialization
+    const timer = setTimeout(() => {
+      setIsInitialized(true);
+    }, 40);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Modals
   const [selectorModalSlot, setSelectorModalSlot] = useState<'device1' | 'device2' | null>(null);
@@ -93,7 +104,7 @@ export default function App() {
 
   // Handle full data reset
   const handleResetAllSettings = useCallback(() => {
-    localStorage.clear();
+    safeStorage.clear();
     removeDevice('device1');
     removeDevice('device2');
     resetLatencies();
@@ -102,6 +113,21 @@ export default function App() {
     setDevice2Volume(0.8);
     window.location.reload();
   }, [removeDevice, resetLatencies, setMasterVolume, setDevice1Volume, setDevice2Volume]);
+
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen bg-[#0B1020] text-slate-100 flex flex-col items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#6C63FF] to-[#00D4FF] flex items-center justify-center text-white shadow-lg shadow-[#6C63FF]/30 animate-pulse">
+            <Bluetooth className="w-6 h-6" />
+          </div>
+          <h1 className="text-lg font-bold text-white tracking-tight">DualSync BT</h1>
+          <p className="text-xs text-slate-400">Two Devices. One Audio Experience.</p>
+          <div className="w-5 h-5 border-2 border-slate-700 border-t-[#00D4FF] rounded-full animate-spin mt-2" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0B1020] text-slate-100 flex flex-col font-sans selection:bg-[#6C63FF]/30 selection:text-white">

@@ -34,11 +34,12 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
     const render = () => {
       animationFrameRef.current = requestAnimationFrame(render);
 
-      const width = canvas.width;
-      const height = canvas.height;
-      ctx.clearRect(0, 0, width, height);
+      try {
+        const width = canvas.width;
+        const height = canvas.height;
+        ctx.clearRect(0, 0, width, height);
 
-      if (analyser && isPlaying) {
+        if (analyser && isPlaying) {
         if (variant === 'bars') {
           analyser.getByteFrequencyData(dataArray);
 
@@ -59,7 +60,11 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
 
             ctx.fillStyle = gradient;
             ctx.beginPath();
-            ctx.roundRect(x, y, barWidth, barHeight, [2, 2, 0, 0]);
+            if (typeof (ctx as any).roundRect === 'function') {
+              (ctx as any).roundRect(x, y, barWidth, barHeight, [2, 2, 0, 0]);
+            } else {
+              ctx.rect(x, y, barWidth, barHeight);
+            }
             ctx.fill();
           }
         } else {
@@ -100,7 +105,11 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
           ctx.fillRect(x, height - idleHeight, barWidth, idleHeight);
         }
       }
-    };
+    } catch (err) {
+      // Canvas rendering or context lost error
+      console.warn('AudioVisualizer render warning:', err);
+    }
+  };
 
     render();
 

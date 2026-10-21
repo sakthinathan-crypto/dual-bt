@@ -14,16 +14,51 @@ class CapabilityService {
     }
 
     const isClient = typeof window !== 'undefined';
-    const hasWebBluetooth = isClient && 'bluetooth' in navigator && !!(navigator as any).bluetooth;
-    const isSecureContext = isClient && window.isSecureContext === true;
-    const hasSetSinkId = isClient && 'HTMLMediaElement' in window && 'setSinkId' in HTMLMediaElement.prototype;
-    const hasEnumerateDevices = isClient && 'mediaDevices' in navigator && typeof navigator.mediaDevices.enumerateDevices === 'function';
-    const hasWebAudio = isClient && (typeof AudioContext !== 'undefined' || typeof (window as any).webkitAudioContext !== 'undefined');
-    const hasMediaSession = isClient && 'mediaSession' in navigator;
+    let hasWebBluetooth = false;
+    let isSecureContext = false;
+    let hasSetSinkId = false;
+    let hasEnumerateDevices = false;
+    let hasWebAudio = false;
+    let hasMediaSession = false;
 
-    // Web platform currently does NOT provide independent A2DP Bluetooth audio streams from a single browser tab.
-    // HTMLMediaElement.setSinkId() can direct a media element to a selected OS audio output device,
-    // but cannot split one media stream into two distinct Bluetooth audio endpoints simultaneously.
+    if (isClient) {
+      try {
+        hasWebBluetooth = 'bluetooth' in navigator && !!(navigator as any).bluetooth;
+      } catch {
+        hasWebBluetooth = false;
+      }
+
+      try {
+        isSecureContext = window.isSecureContext === true;
+      } catch {
+        isSecureContext = false;
+      }
+
+      try {
+        hasSetSinkId = 'HTMLMediaElement' in window && 'setSinkId' in HTMLMediaElement.prototype;
+      } catch {
+        hasSetSinkId = false;
+      }
+
+      try {
+        hasEnumerateDevices = 'mediaDevices' in navigator && typeof navigator.mediaDevices.enumerateDevices === 'function';
+      } catch {
+        hasEnumerateDevices = false;
+      }
+
+      try {
+        hasWebAudio = typeof AudioContext !== 'undefined' || typeof (window as any).webkitAudioContext !== 'undefined';
+      } catch {
+        hasWebAudio = false;
+      }
+
+      try {
+        hasMediaSession = 'mediaSession' in navigator;
+      } catch {
+        hasMediaSession = false;
+      }
+    }
+
     const canRouteDualBluetoothAudio = false;
 
     this.cachedCapabilities = {

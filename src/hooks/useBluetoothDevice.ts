@@ -8,6 +8,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { BTDeviceInfo } from '../types/bluetooth';
 import { bluetoothService } from '../services/bluetoothService';
 import { synchronizationService } from '../services/synchronizationService';
+import { safeStorage } from '../utils/storage';
 
 const STORAGE_KEY_BT_D1 = 'dualsync_device1_saved_v1';
 const STORAGE_KEY_BT_D2 = 'dualsync_device2_saved_v1';
@@ -21,12 +22,12 @@ export function useBluetoothDevice() {
   // Restore saved device metadata on mount (without pretending active GATT persists across reloads)
   useEffect(() => {
     try {
-      const d1Json = localStorage.getItem(STORAGE_KEY_BT_D1);
+      const d1Json = safeStorage.getItem(STORAGE_KEY_BT_D1);
       if (d1Json) {
         const d1 = JSON.parse(d1Json);
         setDevice1({ ...d1, gattConnected: false, status: 'disconnected', batteryLevel: null });
       }
-      const d2Json = localStorage.getItem(STORAGE_KEY_BT_D2);
+      const d2Json = safeStorage.getItem(STORAGE_KEY_BT_D2);
       if (d2Json) {
         const d2 = JSON.parse(d2Json);
         setDevice2({ ...d2, gattConnected: false, status: 'disconnected', batteryLevel: null });
@@ -77,10 +78,10 @@ export function useBluetoothDevice() {
 
         if (slot === 'device1') {
           setDevice1(discovered);
-          localStorage.setItem(STORAGE_KEY_BT_D1, JSON.stringify({ id: discovered.id, name: discovered.name, isAudioOutputSupported: false }));
+          safeStorage.setItem(STORAGE_KEY_BT_D1, JSON.stringify({ id: discovered.id, name: discovered.name, isAudioOutputSupported: false }));
         } else {
           setDevice2(discovered);
-          localStorage.setItem(STORAGE_KEY_BT_D2, JSON.stringify({ id: discovered.id, name: discovered.name, isAudioOutputSupported: false }));
+          safeStorage.setItem(STORAGE_KEY_BT_D2, JSON.stringify({ id: discovered.id, name: discovered.name, isAudioOutputSupported: false }));
         }
 
         setIsScanning(null);
@@ -124,11 +125,11 @@ export function useBluetoothDevice() {
     if (slot === 'device1') {
       if (device1) bluetoothService.disconnectGATT(device1);
       setDevice1(null);
-      localStorage.removeItem(STORAGE_KEY_BT_D1);
+      safeStorage.removeItem(STORAGE_KEY_BT_D1);
     } else {
       if (device2) bluetoothService.disconnectGATT(device2);
       setDevice2(null);
-      localStorage.removeItem(STORAGE_KEY_BT_D2);
+      safeStorage.removeItem(STORAGE_KEY_BT_D2);
     }
   }, [device1, device2]);
 
